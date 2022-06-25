@@ -26,12 +26,17 @@ namespace TelegramBot.Client
             _client.DefaultRequestHeaders.Add("X-RapidAPI-Host", _address.Substring(8));
             _client.DefaultRequestHeaders.Add("X-RapidAPI-Key", _apikey);
         }
-        public async Task<List<Recipe>> GetFoodRecipeAsync(string recipe)
+        public async Task<List<ResultItem>> GetFoodRecipeAsync(string recipe, string messageChatId)
         {
-            var responce = await _client.GetAsync($"Recipe/GetAll?Recipe={recipe}&ApiKey={_apikey}");
+            var responce = await _client.GetAsync($"Recipe/GetAll?Recipe={recipe}&MessageChatId={messageChatId}");
             var content = responce.Content.ReadAsStringAsync().Result;
-            var result = JsonConvert.DeserializeObject<List<Recipe>>(content);
-            return result;
+            if (content != null && content.Length != 0)
+            {
+                var result = JsonConvert.DeserializeObject<List<ResultItem>>(content);
+                return result;
+            }
+            else
+                return null;
         }
         public async Task PostFavoriteRecipeAsync(string recipe, string messageChatId)
         {
@@ -78,6 +83,14 @@ namespace TelegramBot.Client
             var responseString = await response.Content.ReadAsStringAsync();
             Console.WriteLine(responseString);
         }
-
+        public async Task PostDietAsync(string diet, string messageChatId)
+        {
+            DietDbRepository dietDbRepository = new(messageChatId, diet);
+            var json = JsonConvert.SerializeObject(dietDbRepository);
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _client.PostAsync("Recipe/AddDiet", data);
+            var responseString = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(responseString);
+        }
     }
 }

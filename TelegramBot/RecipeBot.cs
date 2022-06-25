@@ -20,7 +20,20 @@ namespace TelegramBot
         const string getRecipe = "Get";
         const string addToFavorite = "Add";
         const string deleteFromFavorite = "Delete";
-        TelegramBotClient botClient = new TelegramBotClient("5407272397:AAFb1NxscTLG74sybGLEhRWqeAfTZ4I06gk");
+        const string diet = "Diet";
+        Dictionary<string, string> diets = new Dictionary<string, string>
+        {
+            { "dairy_free", "Dairy-Free"},
+            { "vegan", "Vegan"},
+            { "pescatarian" , "Pescatarian"},
+            { "contains_alcohol" , "Contains Alcohol"},
+            { "low_carb" , "Low-Carb"},
+            { "indulgent_sweets" , "Indulgent Sweets"},
+            { "vegetarian" , "Vegetarian"},
+            { "kid_friendly" , "Kid-Friendly"},
+            { "gluten_free" , "Gluten-Free"},
+        };
+TelegramBotClient botClient = new TelegramBotClient("5457813817:AAFO5-BBhxaHQp9QNg7WbtRHLWy9f0SuU00");
         CancellationToken cancellationToken = new CancellationToken();
         ReceiverOptions receiverOptions = new ReceiverOptions { AllowedUpdates = { } };
         FoodClient foodClient = new FoodClient();
@@ -69,16 +82,23 @@ namespace TelegramBot
             {
                 await DeleteFromFavoriteAsync(callbackQuery.Data.Substring(deleteFromFavorite.Length), callbackQuery.Message.Chat.Id);
             }
-}
+            else if (callbackQuery.Data.StartsWith(diet))
+            {
+                await AddDietAsync(callbackQuery.Data.Substring(diet.Length), callbackQuery.Message.Chat.Id);
+            }
+            else if (callbackQuery.Data == "no_diet")
+            {
+                await AddDietAsync("", callbackQuery.Message.Chat.Id);
+            }
+        }
         private async Task HandlerMessageAsync(ITelegramBotClient botClient, Message message)
         {
             if (message.Text == "/start")
             {
-                Console.WriteLine(message.Chat.Id);
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Enter /keyboard to get started");
                 return;
             }
-            /*else if (message.Text == "/inline")
+            else if (message.Text == "/inline")
             {
                 InlineKeyboardMarkup keyboardMarkup = new
                 (
@@ -89,7 +109,7 @@ namespace TelegramBot
                 );
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Виберіть рецепт", replyMarkup: keyboardMarkup);
                 return;
-            }*/
+            }
             else if (message.Text == "/keyboard")
             {
                 ReplyKeyboardMarkup replyKeyboardMapkup = new
@@ -97,13 +117,13 @@ namespace TelegramBot
                     new[]
                         {
                             new KeyboardButton[] {"Favorites", "Clear favorites"},
-                            new KeyboardButton[] {"Random"}
+                            new KeyboardButton[] {"Random", "Diet"}
                         }
                     )
                 {
                     ResizeKeyboard = true
                 };
-                await botClient.SendTextMessageAsync(message.Chat.Id, "Select button or enter ingredient", replyMarkup: replyKeyboardMapkup);
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Select button or enter ingredients and cuisine:\nBritish\nItalian\nMexican\nDominican\nIndian\nThai\nEthiopian\nCuban\nBrazilian\nTaiwanese", replyMarkup: replyKeyboardMapkup);
                 return;
             }
             else if (message.Text == "Favorites")
@@ -118,6 +138,30 @@ namespace TelegramBot
             {
                 await RandomAsync(message);
             }
+            else if (message.Text == "Diet")
+            {
+                int i = 0;
+                int j = 0;
+                List<List<InlineKeyboardButton>> buttons = new();
+                foreach (var k in diets)
+                {
+                    if (i == 0)
+                    {
+                        buttons.Add(new List<InlineKeyboardButton>());
+                    }
+                    buttons[j].Add(InlineKeyboardButton.WithCallbackData(k.Value, $"{diet}{k.Key}"));
+                    i++;
+
+                    if (i == 3)
+                    {
+                        j++;
+                        i = 0;
+                    }
+                }
+                buttons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData("Delete", $"no_diet") });
+                InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup(buttons);
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Select diet", replyMarkup: keyboardMarkup);
+            }
             else
             {
                 await RecipeListAsync(message);
@@ -125,29 +169,72 @@ namespace TelegramBot
         }
         public async Task Conclusion(string name, long messageChatId)
         {
-            var result = foodClient.GetFoodRecipeAsync(name).Result;
+            var result = foodClient.GetFoodRecipeAsync(name, messageChatId.ToString()).Result;
             if (result == null || result.Count == 0)
                 await botClient.SendTextMessageAsync(messageChatId, "Nothing found");
             else
             {
-                string dishRecipe = $"{result[0].title}\n{result[0].ingredients}\n{result[0].servings}\n{result[0].instructions}\n";
+                var res = result[0];
+                for (int i = 0; i < result.Count; i++)
+                {
+                    if (result[i].name == name)
+                    {
+                        res = result[i];
+                        break;
+                    }
+                } 
+                string dishRecipe = "";
+                if (res.instructions!=null && res.instructions.Count!=0 && res.description != null)
+                { 
+                    string instruction = res.instructions.Aggregate("", (string result, Model.InstructionItem instr) => String.Concat(result, instr.position.ToString() + ". ", instr.display_text + "\n"));
+                    dishRecipe = $"{res.name}\n{res.description}\n{instruction}";
+                }
+                else if(res.instructions != null && res.instructions.Count != 0 && res.description == null)
+                {
+                    string instruction = res.instructions.Aggregate("", (string result, Model.InstructionItem instr) => String.Concat(result, instr.position.ToString() + ". ", instr.display_text + "\n"));
+                    dishRecipe = $"{res.name}\n{instruction}";
+                }
+                else if ((res.instructions == null || res.instructions.Count == 0) && res.description != null)
+                {
+                    dishRecipe = $"{res.name}\n{res.description}";
+                }
+                else
+                {
+                    dishRecipe = $"{res.name}";
+                }
                 var favResult = foodClient.GetFavoritesAsync(messageChatId.ToString()).Result;
                 var favList = favResult.ConvertAll(recipe => recipe.Recipe).ToArray();
                 InlineKeyboardMarkup keyboardMarkup;
                 if (favList.Contains(name))
                 {
-                    keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Delete from favorites", $"{Cut(deleteFromFavorite, result[0].title)}") } };
+                    if (result[0].original_video_url == null)
+                    {
+                        keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Delete from favorites", $"{Cut(deleteFromFavorite, result[0].name)}") } };
+                    }
+                    else
+                    {
+                        keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Delete from favorites", $"{Cut(deleteFromFavorite, result[0].name)}"),
+                                                         InlineKeyboardButton.WithUrl("Watch the video", result[0].original_video_url.ToString())} };
+                    }
                 }
                 else
                 {
-                    keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Add to favorites", $"{Cut(addToFavorite, result[0].title)}") } };
+                    if (result[0].original_video_url == null)
+                    {
+                        keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Add to favorites", $"{Cut(addToFavorite, result[0].name)}") } };
+                    }
+                    else
+                    {
+                        keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Add to favorites", $"{Cut(addToFavorite, result[0].name)}"),
+                                                         InlineKeyboardButton.WithUrl("Watch the video", result[0].original_video_url.ToString())} };
+                    }
                 }
                 await botClient.SendTextMessageAsync(messageChatId, dishRecipe, replyMarkup: keyboardMarkup);
             }
         }
         public async Task RecipeListAsync(Message message)
         {
-            var result = foodClient.GetFoodRecipeAsync(message.Text).Result;
+            var result = foodClient.GetFoodRecipeAsync(message.Text, message.Chat.Id.ToString()).Result;
             if (result == null || result.Count == 0)
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Nothing found");
             else
@@ -156,7 +243,7 @@ namespace TelegramBot
                 {
                     Console.WriteLine($"{recipe.title.Replace(':', '_').Replace('/', '_').Replace("'"[0], '_').Replace(',', '_').Replace('(', '_').Replace(')', '_').Replace('-', '_')}");
                 }*/ 
-                InlineKeyboardMarkup keyboardMarkup = result.ConvertAll(recipe => new[] { InlineKeyboardButton.WithCallbackData(recipe.title, $"{Cut(getRecipe, recipe.title)}") }).ToArray();
+                InlineKeyboardMarkup keyboardMarkup = result.ConvertAll(recipe => new[] { InlineKeyboardButton.WithCallbackData(recipe.name, $"{Cut(getRecipe, recipe.name)}") }).ToArray();
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Select recipe", replyMarkup: keyboardMarkup);
             }
         }
@@ -196,6 +283,16 @@ namespace TelegramBot
                 return callBackData.Substring(0, 64);
             else
                 return callBackData;
+        }
+        public async Task AddDietAsync(string diet, long messageChatId)
+        {
+            await foodClient.PostDietAsync(diet, messageChatId.ToString());
+            if (diet == "")
+            {
+                await botClient.SendTextMessageAsync(messageChatId, $"Diet was deleted");
+            }
+            else
+                await botClient.SendTextMessageAsync(messageChatId, $"{diets[diet]} was added");
         }
     }
 }

@@ -9,6 +9,10 @@ namespace TelegramBot
         {
             RecipeBot recipeBot = new RecipeBot();
             recipeBot.Start();
+            while (true)
+            {
+                System.Threading.Thread.Sleep(1000*3600*24);
+            }
         }
     }
 }

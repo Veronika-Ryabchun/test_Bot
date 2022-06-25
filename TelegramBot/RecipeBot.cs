@@ -42,6 +42,7 @@ namespace TelegramBot
             botClient.StartReceiving(HandlerUpdateAsync, HandlerError, receiverOptions, cancellationToken);
             var botMe = await botClient.GetMeAsync();
             Console.WriteLine($"{botMe.Username} почав працювати");
+            Console.ReadKey();
         }
 
         private Task HandlerError(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)

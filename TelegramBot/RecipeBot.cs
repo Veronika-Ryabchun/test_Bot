@@ -33,7 +33,7 @@ namespace TelegramBot
             { "kid_friendly" , "Kid-Friendly"},
             { "gluten_free" , "Gluten-Free"},
         };
-TelegramBotClient botClient = new TelegramBotClient("5457813817:AAFO5-BBhxaHQp9QNg7WbtRHLWy9f0SuU00");
+        TelegramBotClient botClient = new TelegramBotClient("5494576388:AAGqjlRb4wNMtECgqTMWc9Ks11BwYFHGXrA");
         CancellationToken cancellationToken = new CancellationToken();
         ReceiverOptions receiverOptions = new ReceiverOptions { AllowedUpdates = { } };
         FoodClient foodClient = new FoodClient();

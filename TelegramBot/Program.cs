@@ -9,7 +9,6 @@ namespace TelegramBot
         {
             RecipeBot recipeBot = new RecipeBot();
             recipeBot.Start();
-            Console.ReadKey();
         }
     }
 }

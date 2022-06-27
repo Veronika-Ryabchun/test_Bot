@@ -37,6 +37,7 @@ namespace TelegramBot
         CancellationToken cancellationToken = new CancellationToken();
         ReceiverOptions receiverOptions = new ReceiverOptions { AllowedUpdates = { } };
         FoodClient foodClient = new FoodClient();
+        YtClient ytClient = new YtClient();
         public async Task Start()
         {
             botClient.StartReceiving(HandlerUpdateAsync, HandlerError, receiverOptions, cancellationToken);
@@ -71,7 +72,7 @@ namespace TelegramBot
         {
             if (callbackQuery.Data.StartsWith(getRecipe))
             {
-                await Conclusion(callbackQuery.Data.Substring(getRecipe.Length), callbackQuery.Message.Chat.Id);
+                await Conclusion(callbackQuery.Data.Substring(getRecipe.Length), callbackQuery.Message.Chat.Id, false);
             }
             else if (callbackQuery.Data.StartsWith(addToFavorite))
             {
@@ -166,9 +167,9 @@ namespace TelegramBot
                 await RecipeListAsync(message);
             }
         }
-        public async Task Conclusion(string name, long messageChatId)
+        public async Task Conclusion(string name, long messageChatId, bool ignoreDiet)
         {
-            var result = foodClient.GetFoodRecipeAsync(name, messageChatId.ToString()).Result;
+            var result = foodClient.GetFoodRecipeAsync(name, messageChatId.ToString(), ignoreDiet).Result;
             if (result == null || result.Count == 0)
                 await botClient.SendTextMessageAsync(messageChatId, "Nothing found");
             else
@@ -203,29 +204,30 @@ namespace TelegramBot
                 }
                 var favResult = foodClient.GetFavoritesAsync(messageChatId.ToString()).Result;
                 var favList = favResult.ConvertAll(recipe => recipe.Recipe).ToArray();
+                var video = YtVideoAsync(res.name, messageChatId);
                 InlineKeyboardMarkup keyboardMarkup;
                 if (favList.Contains(name))
                 {
-                    if (result[0].original_video_url == null)
+                    if (video.Result.items[0].id.videoId == null)
                     {
                         keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Delete from favorites", $"{Cut(deleteFromFavorite, result[0].name)}") } };
                     }
                     else
                     {
                         keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Delete from favorites", $"{Cut(deleteFromFavorite, result[0].name)}"),
-                                                         InlineKeyboardButton.WithUrl("Watch the video", result[0].original_video_url.ToString())} };
+                                                         InlineKeyboardButton.WithUrl("Watch the video", @"https://www.youtube.com/watch?v=" + video.Result.items[0].id.videoId)} };
                     }
                 }
                 else
                 {
-                    if (result[0].original_video_url == null)
+                    if (video.Result.items[0].id.videoId == null)
                     {
                         keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Add to favorites", $"{Cut(addToFavorite, result[0].name)}") } };
                     }
                     else
                     {
                         keyboardMarkup = new[] { new[] { InlineKeyboardButton.WithCallbackData("Add to favorites", $"{Cut(addToFavorite, result[0].name)}"),
-                                                         InlineKeyboardButton.WithUrl("Watch the video", result[0].original_video_url.ToString())} };
+                                                         InlineKeyboardButton.WithUrl("Watch the video", @"https://www.youtube.com/watch?v=" + video.Result.items[0].id.videoId)} };
                     }
                 }
                 await botClient.SendTextMessageAsync(messageChatId, dishRecipe, replyMarkup: keyboardMarkup);
@@ -233,7 +235,7 @@ namespace TelegramBot
         }
         public async Task RecipeListAsync(Message message)
         {
-            var result = foodClient.GetFoodRecipeAsync(message.Text, message.Chat.Id.ToString()).Result;
+            var result = foodClient.GetFoodRecipeAsync(message.Text, message.Chat.Id.ToString(), false).Result;
             if (result == null || result.Count == 0)
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Nothing found");
             else
@@ -248,11 +250,11 @@ namespace TelegramBot
         }
         public async Task RandomAsync(Message message)
         {
-            string[] Random = { "Chicken", "Salad", "Olive", "Broccoli", "Fruit", "Garlic", "Herb", "Cream", "Cheese", "Vegetable", "Noodles", "Sause", "Rise", "Cake" };
+            string[] Random = { "Chicken", "Salad", "Olive", "Broccoli", "Fruit", "Garlic", "Herb", "Cream", "Cheese", "Vegetable", "Noodles", "Sauсe", "Rise", "Cake", "Pancakes", "Ice cream" };
             Random random = new Random();
-            string choose = Random[random.Next(0, 13)];
+            string choose = Random[random.Next(0, 15)];
             await botClient.SendTextMessageAsync(message.Chat.Id, "Random recipe");
-            await Conclusion(choose, message.Chat.Id);
+            await Conclusion(choose, message.Chat.Id, true);
         }
         public async Task AddToFavoriteAsync(string title, long messageChatId)
         {
@@ -292,6 +294,16 @@ namespace TelegramBot
             }
             else
                 await botClient.SendTextMessageAsync(messageChatId, $"{diets[diet]} was added");
+        }
+        public async Task<Model.Items> YtVideoAsync(string name, long messageChatId)
+        {
+            var result = ytClient.GetVideoAsync(name, messageChatId.ToString()).Result;
+            if (result == null)
+                return null;
+            else
+            {
+                return result;
+            }
         }
     }
 }

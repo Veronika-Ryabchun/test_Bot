@@ -244,15 +244,15 @@ namespace TelegramBot
                 {
                     Console.WriteLine($"{recipe.title.Replace(':', '_').Replace('/', '_').Replace("'"[0], '_').Replace(',', '_').Replace('(', '_').Replace(')', '_').Replace('-', '_')}");
                 }*/ 
-                InlineKeyboardMarkup keyboardMarkup = result.ConvertAll(recipe => new[] { InlineKeyboardButton.WithCallbackData(recipe.name, $"{Cut(getRecipe, recipe.name)}") }).ToArray();
+                InlineKeyboardMarkup keyboardMarkup = result.ConvertAll(recipe => new[] { InlineKeyboardButton.WithCallbackData(recipe.name, $"{Cut(getRecipe, recipe.name).Replace("!", "")}") }).ToArray();
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Select recipe", replyMarkup: keyboardMarkup);
             }
         }
         public async Task RandomAsync(Message message)
         {
-            string[] Random = { "Chicken", "Salad", "Olive", "Broccoli", "Fruit", "Garlic", "Herb", "Cream", "Cheese", "Vegetable", "Noodles", "Sauсe", "Rise", "Cake", "Pancakes", "Ice cream" };
+            string[] Random = { "Chicken", "Salad", "Olive", "Broccoli", "Fruit", "Garlic", "Herb", "Cream", "Cheese", "Vegetable", "Noodles", "Rise", "Cake", "Pancakes", "Ice cream" };
             Random random = new Random();
-            string choose = Random[random.Next(0, 15)];
+            string choose = Random[random.Next(0, 14)];
             await botClient.SendTextMessageAsync(message.Chat.Id, "Random recipe");
             await Conclusion(choose, message.Chat.Id, true);
         }

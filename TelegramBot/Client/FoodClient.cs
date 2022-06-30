@@ -28,6 +28,7 @@ namespace TelegramBot.Client
         }
         public async Task<List<ResultItem>> GetFoodRecipeAsync(string recipe, string messageChatId, bool ignoreDiet)
         {
+            Console.WriteLine(recipe, messageChatId, ignoreDiet);
             var responce = await _client.GetAsync($"Recipe/GetAll?Recipe={recipe}&MessageChatId={messageChatId}&ignoreDiet={ignoreDiet}");
             var content = responce.Content.ReadAsStringAsync().Result;
             if (content != null && content.Length != 0)

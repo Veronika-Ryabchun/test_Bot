@@ -182,7 +182,7 @@ namespace TelegramBot
                         res = result[i];
                         break;
                     }
-                } 
+                }
                 string dishRecipe = "";
                 if (res.instructions!=null && res.instructions.Count!=0 && res.description != null)
                 { 
